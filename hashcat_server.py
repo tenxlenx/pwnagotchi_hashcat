@@ -36,33 +36,62 @@ class HashcatServer(plugins.Plugin):
     def _upload_to_server(self, agent, hcx_file):
         url = f"http://{self.options['server_ip']}:{self.options['server_port']}/upload"
 
-         # Verify file exists and is non-empty
+        # Verify file exists and is non-empty
         if not os.path.exists(hcx_file) or os.path.getsize(hcx_file) == 0:
-             logging.error(f"File {hcx_file} does not exist or is empty, skipping upload.")
-             return False
+            logging.error(f"File {hcx_file} does not exist or is empty, skipping upload.")
+            return False
 
-        files = {'capture': open(hcx_file, 'rb')}
+        # Construct the curl command
+        curl_command = [
+            'curl',
+            '-X', 'POST',  # HTTP POST request
+            url,
+            '-F', f"capture=@{hcx_file}"  # File upload using the form field 'capture'
+        ]
+
         try:
-            response = requests.post(url, files=files)
-            if response.status_code == 200:
-                job_id = response.json().get("job_id")
-                if job_id:
-                    self.job_ids[job_id] = hcx_file
-                    message = f"Uploaded {hcx_file} and got job ID {job_id}"
-                    logging.info(message)
-                    agent.view.set('status', message)
-                    return job_id
+            # Use subprocess to execute the curl command
+            process = subprocess.Popen(curl_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate()
+
+            # Log the raw output
+            logging.info(f"Curl output: {stdout.strip()}")
+            if stderr:
+                logging.error(f"Curl error: {stderr.strip()}")
+
+            # Check for success based on curl's output
+            if process.returncode == 0:
+                if '"status":"success"' in stdout:
+                    job_id = self._extract_job_id(stdout)  # Extract job ID from the response
+                    if job_id:
+                        self.job_ids[job_id] = hcx_file
+                        message = f"Uploaded {hcx_file} and got job ID {job_id}"
+                        logging.info(message)
+                        agent.view.set('status', message)
+                        return job_id
+                    else:
+                        logging.error(f"Failed to extract job ID from the server response for {hcx_file}")
+                        return False
                 else:
-                    logging.error(f"Failed to get job ID from server for {hcx_file}")
+                    logging.error(f"Upload failed or server returned an error: {stdout.strip()}")
                     return False
             else:
-                logging.error(f"Failed to upload {hcx_file}. Status code: {response.status_code}")
+                logging.error(f"Curl command failed with return code {process.returncode}")
                 return False
-        except requests.RequestException as e:
-            logging.error(f"Request failed: {e}")
+
+        except Exception as e:
+            logging.error(f"Exception while uploading {hcx_file}: {e}")
             return False
-        finally:
-            files['capture'].close()
+
+    def _extract_job_id(self, stdout):
+        # This method extracts the job ID from the server's JSON response
+        import json
+        try:
+            response = json.loads(stdout)
+            return response.get('job_id')
+        except json.JSONDecodeError:
+            logging.error("Failed to parse JSON response from server.")
+            return None
 
     def _fetch_jobs(self):
         try:
