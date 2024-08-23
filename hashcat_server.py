@@ -12,8 +12,8 @@ class HashcatServer(plugins.Plugin):
 
     def __init__(self):
         self.upload_queue = []
-        self.server_ip = self.options.get('server_ip', '127.0.0.1')
-        self.server_port = self.options.get('server_port', '5566')
+        self.server_ip = self.options['server_ip']
+        self.server_port = self.options['server_port']
         self.api_url =  f'http://{self.server_ip}:{self.server_port}/api/jobs'
         logging.basicConfig(level=logging.INFO)  # Set up logging
 
@@ -89,7 +89,7 @@ class HashcatServer(plugins.Plugin):
             agent.view.set('status', "Failed to retrieve jobs")
 
     def on_loaded(self):
-        logging.info("HandshakeUploader plugin loaded with options: %s" % self.options)
+        logging.info("hashcat server loaded with options: %s" % self.options)
 
     def on_unload(self, agent):
-        logging.info("HandshakeUploader plugin unloaded")
+        logging.info("hashcat server unloaded")
