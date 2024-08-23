@@ -6,7 +6,7 @@ import pwnagotchi.plugins as plugins
 
 class HashcatServer(plugins.Plugin):
     __author__ = 'liquidmind@me.com'
-    __version__ = '1.0.4'
+    __version__ = '1.0.5'
     __license__ = 'GPL3'
     __description__ = 'Converts pcap files to .22000 format and uploads them to a server when internet is available. Also checks and displays available jobs.'
 
@@ -33,25 +33,36 @@ class HashcatServer(plugins.Plugin):
             logging.error(f"Failed to convert {pcap_file} to .22000: {e}")
             return None
 
-    def _upload_to_server(self, hcx_file):
-        url = f"http://{self.server_ip}:{self.server_port}/upload"
-        try:
-            with open(hcx_file, 'rb') as file:
-                files = {'file': file}
-                logging.debug(f"Uploading {hcx_file} to {url}")
-                response = requests.post(url, files=files)
-                if response.status_code == 200:
-                    logging.info(f"Successfully uploaded {hcx_file} to {url}")
-                    return True
+    def _upload_to_server(self, agent, hcx_file):
+        url = f"http://{self.options['server_ip']}:{self.options['server_port']}/upload"
+
+         # Verify file exists and is non-empty
+        if not os.path.exists(hcx_file) or os.path.getsize(hcx_file) == 0:
+             logging.error(f"File {hcx_file} does not exist or is empty, skipping upload.")
+             return False
+
+         files = {'capture': open(hcx_file, 'rb')}
+         try:
+            response = requests.post(url, files=files)
+            if response.status_code == 200:
+                job_id = response.json().get("job_id")
+                if job_id:
+                    self.job_ids[job_id] = hcx_file
+                    message = f"Uploaded {hcx_file} and got job ID {job_id}"
+                    logging.info(message)
+                    agent.view.set('status', message)
+                    return job_id
                 else:
-                    logging.error(f"Failed to upload {hcx_file}. Status code: {response.status_code}")
+                    logging.error(f"Failed to get job ID from server for {hcx_file}")
                     return False
-        except IOError as e:
-            logging.error(f"Error reading file {hcx_file}: {e}")
-            return False
+            else:
+                logging.error(f"Failed to upload {hcx_file}. Status code: {response.status_code}")
+                return False
         except requests.RequestException as e:
-            logging.error(f"Error uploading {hcx_file}: {e}")
+            logging.error(f"Request failed: {e}")
             return False
+        finally:
+            files['capture'].close()
 
     def _fetch_jobs(self):
         try:
