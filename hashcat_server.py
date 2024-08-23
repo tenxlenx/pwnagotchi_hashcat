@@ -3,24 +3,28 @@ import os
 import subprocess
 import requests
 import pwnagotchi.plugins as plugins
+from pwnagotchi.ui.components import LabeledValue
+from pwnagotchi.ui.view import BLACK
+import pwnagotchi.ui.fonts as fonts
+
 
 class HashcatServer(plugins.Plugin):
     __author__ = 'liquidmind@me.com'
-    __version__ = '1.0.7'
+    __version__ = '1.0.8'
     __license__ = 'GPL3'
     __description__ = 'Converts pcap files to .22000 format and uploads them to a server when internet is available. Also checks and displays available jobs.'
 
-
     def __init__(self):
         self.upload_queue = []
-    
+
     def on_loaded(self):
         self.server_ip = self.options['server_ip']
         self.server_port = self.options['server_port']
-        self.api_url =  f'http://{self.server_ip}:{self.server_port}/api/jobs'
+        self.api_url = f'http://{self.server_ip}:{self.server_port}/api/jobs'
+        self.job_ids = {}  # Initialize job_ids to track jobs
         logging.basicConfig(level=logging.INFO)  # Set up logging
-        logging.info("hashcat server loaded with options: %s" % self.options)
-        
+        logging.info("HashcatServer plugin loaded with options: %s" % self.options)
+
     def _convert_to_22000(self, pcap_file):
         hcx_file = pcap_file.replace('.pcap', '.22000')
         cmd = ['hcxpcapngtool', '-o', hcx_file, pcap_file]
@@ -119,18 +123,36 @@ class HashcatServer(plugins.Plugin):
         if self.upload_queue:
             logging.info("Internet available, uploading queued files...")
             for hcx_file in self.upload_queue[:]:  # Create a copy of the list to avoid modifying during iteration
-                if self._upload_to_server(hcx_file):
+                if self._upload_to_server(agent, hcx_file):  # Pass 'agent' to '_upload_to_server'
                     self.upload_queue.remove(hcx_file)
                 else:
                     logging.error(f"Failed to upload {hcx_file}, re-queuing for next attempt")
 
-    def on_ui_update(self, agent):
+    def on_ui_update(self, ui):
         jobs = self._fetch_jobs()
         if jobs:
             job_list = "\n".join([f"- {job['title']} (ID: {job['id']})" for job in jobs])
-            agent.view.set('status', f"Current Jobs:\n{job_list}")
+            ui.set('hashcat', f"Current Jobs:\n{job_list}")
         else:
-            agent.view.set('status', "Failed to retrieve jobs")
-            
-    def on_unload(self, agent):
-        logging.info("hashcat server unloaded")
+            ui.set('hashcat', "Failed to retrieve jobs")
+
+    def on_unload(self, ui):
+        with ui._lock:
+            try:
+                ui.remove_element("hashcat")
+                logging.info(f"[{self.__class__.__name__}] plugin unloaded")
+            except Exception as e:
+                logging.error(f"[{self.__class__.__name__}] unload: %s" % e)
+
+    def on_ui_setup(self, ui):
+        ui.add_element(
+            "hashcat",
+            LabeledValue(
+                color=BLACK,
+                label="",
+                value="",
+                position=(ui.width() - 30, ui.height() / 2 + 20),
+                label_font=fonts.Bold,
+                text_font=fonts.Medium,
+            ),
+        )
