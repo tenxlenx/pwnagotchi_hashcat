@@ -10,7 +10,7 @@ import pwnagotchi.ui.fonts as fonts
 
 class HashcatServer(plugins.Plugin):
     __author__ = 'liquidmind@me.com'
-    __version__ = '1.0.8'
+    __version__ = '1.0.9'
     __license__ = 'GPL3'
     __description__ = 'Converts pcap files to .22000 format and uploads them to a server when internet is available. Also checks and displays available jobs.'
 
@@ -131,10 +131,25 @@ class HashcatServer(plugins.Plugin):
     def on_ui_update(self, ui):
         jobs = self._fetch_jobs()
         if jobs:
-            job_list = "\n".join([f"- {job['title']} (ID: {job['id']})" for job in jobs])
-            ui.set('hashcat', f"Current Jobs:\n{job_list}")
+            total_jobs = len(jobs)
+            current_job = None
+
+            # Find the current job with ongoing progress
+            for job in jobs:
+                if self.job_ids.get(job['id']):
+                    job_status = self.job_ids[job['id']]['status']
+                    if job_status == 'running':
+                        current_job = job
+                        break
+
+            if current_job:
+                progress = self.job_ids[current_job['id']]['progress']
+                job_number = list(self.job_ids.keys()).index(current_job['id']) + 1
+                ui.set('hashcat', f"Job {job_number}/{total_jobs} - Progress: {progress}")
+            else:
+                ui.set('hashcat', f"No ongoing jobs. Total Jobs: {total_jobs}")
         else:
-            ui.set('hashcat', "Failed to retrieve jobs")
+            ui.set('hashcat', "No jobs available")
 
     def on_unload(self, ui):
         with ui._lock:
@@ -149,9 +164,9 @@ class HashcatServer(plugins.Plugin):
             "hashcat",
             LabeledValue(
                 color=BLACK,
-                label="",
+                label="hashcat",
                 value="",
-                position=(ui.width() - 30, ui.height() / 2 + 20),
+                position=(180, 130),
                 label_font=fonts.Bold,
                 text_font=fonts.Medium,
             ),
