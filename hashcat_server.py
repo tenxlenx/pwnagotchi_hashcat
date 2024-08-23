@@ -19,7 +19,7 @@ class HandshakeUploader(plugins.Plugin):
 
     def _convert_to_22000(self, pcap_file):
         hcx_file = pcap_file.replace('.pcap', '.22000')
-        cmd = ['hcxpcaptool', '-o', hcx_file, pcap_file]
+        cmd = ['hcxpcapngtool', '-o', hcx_file, pcap_file]
         try:
             logging.debug(f"Running command: {' '.join(cmd)}")
             subprocess.run(cmd, check=True)
