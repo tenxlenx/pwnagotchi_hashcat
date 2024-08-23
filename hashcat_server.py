@@ -10,7 +10,7 @@ import pwnagotchi.ui.fonts as fonts
 
 class HashcatServer(plugins.Plugin):
     __author__ = 'liquidmind@me.com'
-    __version__ = '1.0.9'
+    __version__ = '1.0.10'
     __license__ = 'GPL3'
     __description__ = 'Converts pcap files to .22000 format and uploads them to a server when internet is available. Also checks and displays available jobs.'
 
@@ -145,11 +145,11 @@ class HashcatServer(plugins.Plugin):
             if current_job:
                 progress = self.job_ids[current_job['id']]['progress']
                 job_number = list(self.job_ids.keys()).index(current_job['id']) + 1
-                ui.set('hashcat', f"Job {job_number}/{total_jobs} - Progress: {progress}")
+                ui.set('hashcat', f"Progress: {progress}")
             else:
-                ui.set('hashcat', f"No ongoing jobs. Total Jobs: {total_jobs}")
+                ui.set('hashcat', "No jobs")
         else:
-            ui.set('hashcat', "No jobs available")
+            ui.set('hashcat', "No jobs")
 
     def on_unload(self, ui):
         with ui._lock:
