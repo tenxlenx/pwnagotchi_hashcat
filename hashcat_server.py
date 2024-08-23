@@ -41,8 +41,8 @@ class HashcatServer(plugins.Plugin):
              logging.error(f"File {hcx_file} does not exist or is empty, skipping upload.")
              return False
 
-         files = {'capture': open(hcx_file, 'rb')}
-         try:
+        files = {'capture': open(hcx_file, 'rb')}
+        try:
             response = requests.post(url, files=files)
             if response.status_code == 200:
                 job_id = response.json().get("job_id")
