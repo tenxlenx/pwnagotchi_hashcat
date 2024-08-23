@@ -10,13 +10,17 @@ class HashcatServer(plugins.Plugin):
     __license__ = 'GPL3'
     __description__ = 'Converts pcap files to .22000 format and uploads them to a server when internet is available. Also checks and displays available jobs.'
 
+
     def __init__(self):
         self.upload_queue = []
+    
+    def on_loaded(self):
         self.server_ip = self.options['server_ip']
         self.server_port = self.options['server_port']
         self.api_url =  f'http://{self.server_ip}:{self.server_port}/api/jobs'
         logging.basicConfig(level=logging.INFO)  # Set up logging
-
+        logging.info("hashcat server loaded with options: %s" % self.options)
+        
     def _convert_to_22000(self, pcap_file):
         hcx_file = pcap_file.replace('.pcap', '.22000')
         cmd = ['hcxpcapngtool', '-o', hcx_file, pcap_file]
@@ -87,9 +91,6 @@ class HashcatServer(plugins.Plugin):
             agent.view.set('status', f"Current Jobs:\n{job_list}")
         else:
             agent.view.set('status', "Failed to retrieve jobs")
-
-    def on_loaded(self):
-        logging.info("hashcat server loaded with options: %s" % self.options)
-
+            
     def on_unload(self, agent):
         logging.info("hashcat server unloaded")
