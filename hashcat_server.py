@@ -12,9 +12,9 @@ class HashcatServer(plugins.Plugin):
 
     def __init__(self):
         self.upload_queue = []
-        self.api_url = self.options.get('api_url', 'http://example.com/api/jobs')
+        self.api_url = self.options.get('api_url', 'http://127.0.0.1:5566/api/jobs')
         self.server_ip = self.options.get('server_ip', '127.0.0.1')
-        self.server_port = self.options.get('server_port', '8085')
+        self.server_port = self.options.get('server_port', '5566')
         logging.basicConfig(level=logging.INFO)  # Set up logging
 
     def _convert_to_22000(self, pcap_file):
