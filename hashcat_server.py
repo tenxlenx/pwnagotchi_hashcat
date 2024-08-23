@@ -10,7 +10,7 @@ import pwnagotchi.ui.fonts as fonts
 
 class HashcatServer(plugins.Plugin):
     __author__ = 'liquidmind@me.com'
-    __version__ = '1.0.10'
+    __version__ = '1.0.11'
     __license__ = 'GPL3'
     __description__ = 'Converts pcap files to .22000 format and uploads them to a server when internet is available. Also checks and displays available jobs.'
 
@@ -166,7 +166,7 @@ class HashcatServer(plugins.Plugin):
                 color=BLACK,
                 label="hashcat",
                 value="",
-                position=(180, 130),
+                position=(140, 120),
                 label_font=fonts.Bold,
                 text_font=fonts.Medium,
             ),
