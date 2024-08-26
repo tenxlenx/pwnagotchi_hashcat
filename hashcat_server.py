@@ -10,12 +10,15 @@ import pwnagotchi.ui.fonts as fonts
 
 class HashcatServer(plugins.Plugin):
     __author__ = 'liquidmind@me.com'
-    __version__ = '1.0.11'
+    __version__ = '1.0.12'
     __license__ = 'GPL3'
     __description__ = 'Converts pcap files to .22000 format and uploads them to a server when internet is available. Also checks and displays available jobs.'
 
     def __init__(self):
         self.upload_queue = []
+        self.progr = "0 %"
+        self.statusm = "not running"
+        self.total = "0"
 
     def on_loaded(self):
         self.server_ip = self.options['server_ip']
@@ -23,6 +26,7 @@ class HashcatServer(plugins.Plugin):
         self.api_url = f'http://{self.server_ip}:{self.server_port}/api/jobs'
         self.job_ids = {}  # Initialize job_ids to track jobs
         logging.basicConfig(level=logging.INFO)  # Set up logging
+
         logging.info("HashcatServer plugin loaded with options: %s" % self.options)
 
     def _convert_to_22000(self, pcap_file):
@@ -103,11 +107,14 @@ class HashcatServer(plugins.Plugin):
             response = requests.get(self.api_url)
             if response.status_code == 200:
                 jobs = response.json()
-                logging.info(f"Retrieved jobs: {jobs}")
+                self.progr = str(jobs.get("jobs", [[]])[0].get("progress"))
+                self.statusm = str(jobs.get("jobs", [[]])[0].get("status"))
+                self.total = str(len(jobs.get("jobs", [[]])))
                 return jobs
             else:
                 logging.error(f"Failed to retrieve jobs. Status code: {response.status_code}")
                 return None
+
         except requests.RequestException as e:
             logging.error(f"Error fetching jobs: {e}")
             return None
@@ -143,13 +150,13 @@ class HashcatServer(plugins.Plugin):
                         break
 
             if current_job:
-                progress = self.job_ids[current_job['id']]['progress']
+                self.progr = progress = self.job_ids[current_job['id']]['progress']
                 job_number = list(self.job_ids.keys()).index(current_job['id']) + 1
-                ui.set('hashcat', f"Progress: {progress}")
+                ui.set('hashcat', f"Progress: {progress}, jobs: {total_jobs}")
             else:
-                ui.set('hashcat', "No jobs")
+                ui.set('hashcat', f"{total_jobs}")
         else:
-            ui.set('hashcat', "No jobs")
+            ui.set('hashcat',  f"{self.total}")
 
     def on_unload(self, ui):
         with ui._lock:
